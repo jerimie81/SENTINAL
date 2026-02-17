@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-selfcheck.json
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Other
+.DS_Store
+.idea/
+.vscode/
+*.db
+*.sqlite3
+firebase-debug.log
