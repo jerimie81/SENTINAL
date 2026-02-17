@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "sentinal"
 version = "0.0.1"
 authors = [
-  { name="Your Name", email="you@example.com" },
+  { name="J-Palmer", email="redrum519git@gmail.com" },
 ]
 description = "A low-resource system administration CLI for Linux desktop workflows."
 readme = "README.md"
@@ -16,6 +16,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "google-adk",
+    "requests",
+]
 
 [project.scripts]
 sentinal = "sentinal.cli:main"
@@ -23,4 +27,14 @@ sentinal = "sentinal.cli:main"
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "fastapi",
+    "uvicorn[standard]",
 ]
+gpu = ["pynvml"]
+llm = ["llama-cpp-python"]
+metrics = ["prometheus-client"]
+ebpf = ["bcc"]
+full = ["sentinal[gpu,llm,metrics,ebpf]"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}

@@ -79,6 +79,18 @@ eBPF tracing	--trace-io	apt install bcc-tools python3-bcc	~60 MB
 Index tree	--index-tree	—	—
 All heavy commands spawn a new terminal to avoid blocking your shell.
 
+🤖 ADK Integration
+Sentinal can integrate with a local ADK (Agent Development Kit) server to provide more advanced AI capabilities. This allows you to offload more complex questions to a dedicated AI agent.
+
+**Setup:**
+1.  Install the `google-adk`: `pip install google-adk`
+2.  Start the ADK server: `adk-server`
+
+**Usage:**
+```bash
+sentinal adk "your question here"
+```
+
 🛡️ Safety by Design
 DRY-RUN default — destructive actions require --force
 Process whitelist (systemd, Xorg, etc.) — never auto-killed
