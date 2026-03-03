@@ -1,8 +1,8 @@
 [project]
-name = "flash-ai"
-version = "0.1.0"
-description = "Initial Flash-AI application scaffold"
-requires-python = ">=3.11"
+name = "sentinal"
+version = "0.2.0"
+description = "SENTINAL portable offline AI core"
+requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
