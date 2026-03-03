@@ -44,13 +44,16 @@ class DoctorReport:
 
 
 def run_doctor(config: SentinalConfig) -> DoctorReport:
-    """Run all health checks and return a DoctorReport.
-
-    Args:
-        config: Validated SentinalConfig.
-
+    """
+    Perform a set of system and configuration health checks.
+    
+    Checks include: Python runtime version, data directory presence, available disk space, metadata SQLite DB presence, index directory presence, availability of optional dependencies (pypdf, numpy, tomli), and index integrity if an index exists.
+    
+    Parameters:
+        config (SentinalConfig): Application configuration containing paths (data_dir, db_path, index_path) used for checks.
+    
     Returns:
-        DoctorReport with individual check results.
+        DoctorReport: Report containing individual CheckResult entries for each performed check.
     """
     report = DoctorReport()
 
