@@ -23,3 +23,13 @@ You can switch to JSON output with `--json` and choose config profiles (`dev`, `
 ```bash
 PYTHONPATH=src python -m pytest -q
 ```
+
+
+## Continuous integration
+
+A GitHub Actions workflow now runs:
+
+- matrix unit tests on Python 3.10/3.11/3.12
+- CLI smoke workflow (`init` -> `ingest` -> `search` -> `ask`)
+
+Workflow file: `.github/workflows/test-suite.yml`.
