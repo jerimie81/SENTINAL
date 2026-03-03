@@ -32,6 +32,15 @@ def test_pipeline_ingest_search_ask_is_deterministic(tmp_path: Path) -> None:
 
 
 def test_cli_init_ingest_search_and_ask_json_output(tmp_path: Path) -> None:
+    """
+    Run the CLI end-to-end in JSON mode to validate init, ingest, search, and ask workflows.
+    
+    Executes the CLI with a temporary data directory and a sample source file, then:
+    - Initializes the profile and asserts the returned status is "initialised".
+    - Ingests the sample file and asserts the payload indicates it was not skipped.
+    - Performs a search for "ingestion" and asserts the search payload is non-empty.
+    - Asks "What does SENTINAL include?" and asserts the response is grounded and includes sources.
+    """
     runner = CliRunner()
     data_dir = tmp_path / "state"
     source = tmp_path / "notes.md"
