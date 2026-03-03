@@ -123,7 +123,7 @@ def run_doctor(config: SentinalConfig) -> DoctorReport:
 
     # 7. Index integrity (if index exists)
     if idx_ok:
-        from sentinal.index import VectorIndex
+        from sentinal.index_py import VectorIndex
         try:
             vi = VectorIndex(index_dir=config.index_path)
             issues = vi.integrity_check()

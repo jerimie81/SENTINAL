@@ -1,0 +1,87 @@
+name: test-suite
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Unit tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package + test deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+
+      - name: Run pytest
+        env:
+          PYTHONPATH: src
+        run: pytest -q
+
+  cli-smoke:
+    name: CLI smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Execute CLI workflow
+        env:
+          PYTHONPATH: src
+          SENTINAL_LOG_LEVEL: CRITICAL
+          SENTINAL_DATA_DIR: /tmp/sentinal-ci/state
+        run: |
+          mkdir -p /tmp/sentinal-ci
+          cat > /tmp/sentinal-ci/input.txt <<'EOF'
+          SENTINAL works offline first and supports deterministic local indexing.
+          EOF
+
+          python -m sentinal.cli_py --json --profile dev init > /tmp/sentinal-ci/init.json
+          python -m sentinal.cli_py --json ingest /tmp/sentinal-ci/input.txt > /tmp/sentinal-ci/ingest.json
+          python -m sentinal.cli_py --json search "offline" > /tmp/sentinal-ci/search.json
+          python -m sentinal.cli_py --json ask "What does SENTINAL support?" > /tmp/sentinal-ci/ask.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          init = json.loads(Path('/tmp/sentinal-ci/init.json').read_text())
+          ingest = json.loads(Path('/tmp/sentinal-ci/ingest.json').read_text())
+          search = json.loads(Path('/tmp/sentinal-ci/search.json').read_text())
+          ask = json.loads(Path('/tmp/sentinal-ci/ask.json').read_text())
+
+          assert init['status'] == 'initialised'
+          assert ingest['skipped'] is False
+          assert isinstance(search, list) and search
+          assert ask['grounded'] is True
+          assert ask['sources']
+          PY

@@ -1,20 +1,35 @@
-# Flash-AI (Initial Scaffold)
+# SENTINAL + Flash-AI
 
-This repository now contains an initial, runnable Python scaffold for Flash-AI:
+This repository contains two local-first Python components:
 
-- `flash_ai.engine`: deterministic flashcard generation logic
-- `flash_ai.service`: application service layer with in-memory deck storage
-- `flash_ai.models`: core domain models
-- `tests/`: starter tests for generation and service behavior
+- `sentinal`: offline ingestion/index/search/QA pipeline with a Click CLI.
+- `flash_ai`: deterministic flashcard generation scaffold.
 
-## Why this scaffold
+## SENTINAL quickstart
 
-The file `Flash-AI_Technical-Design-Manual-(TDM).PDF` currently has zero bytes in this repository,
-so this scaffold establishes a clean foundation that can be aligned to the full TDM once the
-manual content is available.
+Run CLI commands with `PYTHONPATH=src`:
+
+```bash
+PYTHONPATH=src python -m sentinal.cli_py init
+PYTHONPATH=src python -m sentinal.cli_py ingest ./docs/notes.md
+PYTHONPATH=src python -m sentinal.cli_py search "offline first"
+PYTHONPATH=src python -m sentinal.cli_py ask "What does SENTINAL do?"
+```
+
+You can switch to JSON output with `--json` and choose config profiles (`dev`, `prod`, `airgap`, `edge_lowmem`) via `--profile`.
 
 ## Run tests
 
 ```bash
-python -m pytest -q
+PYTHONPATH=src python -m pytest -q
 ```
+
+
+## Continuous integration
+
+A GitHub Actions workflow now runs:
+
+- matrix unit tests on Python 3.10/3.11/3.12
+- CLI smoke workflow (`init` -> `ingest` -> `search` -> `ask`)
+
+Workflow file: `.github/workflows/test-suite.yml`.
