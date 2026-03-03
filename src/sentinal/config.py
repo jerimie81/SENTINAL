@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from .config_py import SentinalConfig, load_config
+
 
 @dataclass(frozen=True, slots=True)
 class SentinalPaths:
@@ -31,3 +33,11 @@ class RetrievalConfig:
     chunk_size: int = 500
     chunk_overlap: int = 50
     top_k: int = 4
+
+
+__all__ = [
+    "RetrievalConfig",
+    "SentinalConfig",
+    "SentinalPaths",
+    "load_config",
+]
