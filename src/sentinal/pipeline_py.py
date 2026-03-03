@@ -10,7 +10,7 @@ from sentinal.adapters import get_adapter
 from sentinal.chunker import Chunk, Strategy, chunk_document
 from sentinal.config import SentinalConfig
 from sentinal.errors import IngestionError, QAError
-from sentinal.index import Embedder, VectorIndex
+from sentinal.index_py import Embedder, VectorIndex
 from sentinal.logging_utils import get_logger, timed_log
 from sentinal.storage import MetadataStore
 
