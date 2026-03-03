@@ -1,0 +1,8 @@
+[project]
+name = "flash-ai"
+version = "0.1.0"
+description = "Initial Flash-AI application scaffold"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
