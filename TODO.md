@@ -1,227 +1,293 @@
-# SENTINAL TODO
+# TODO.md — SENTINAL Build Plan + Claude Execution Brief
 
-Comprehensive implementation plan for **SENTINAL – Portable Offline AI System**.
-
----
-
-## 0) Guiding Principles
-
-- **Offline-first:** all core capabilities must function without internet.
-- **Portable:** runnable on constrained hardware (laptop, edge device, field workstation).
-- **Deterministic core path:** baseline behavior reproducible across runs.
-- **Security by default:** local encryption, least privilege, auditable actions.
-- **Progressive enhancement:** optional model/provider integrations must not break offline baseline.
+This file is designed as **direct user input for Claude** when asking it to implement SENTINAL.
+Use it as both:
+1) a product roadmap, and
+2) an execution contract for how coding tasks should be delivered.
 
 ---
 
-## 1) Foundation & Architecture (Highest Priority)
+## 0) Copy/Paste Starter Prompt for Claude
 
-### 1.1 Runtime + packaging
-- [ ] Add lockfile + reproducible dependency management strategy.
-- [ ] Define supported Python matrix and CI test matrix.
-- [ ] Add package entrypoints (`sentinal-cli`) and version command.
-- [ ] Create semantic versioning and release checklist.
+```text
+You are implementing SENTINAL from the repository TODO.md.
 
-### 1.2 Configuration system
-- [ ] Extend config to support environment-variable overrides.
-- [ ] Add config validation layer (types + range checks + clear errors).
-- [ ] Add profile support (`dev`, `prod`, `airgap`, `edge-lowmem`).
-- [ ] Add persisted app config in `.sentinal/config.toml`.
+Follow TODO.md exactly as the source of truth.
+Work in small, production-safe increments.
+For each task:
+1) propose a short implementation plan,
+2) make minimal file changes,
+3) add/adjust tests,
+4) run validations,
+5) summarize with risks + next step.
 
-### 1.3 Logging, telemetry, diagnostics
-- [ ] Add structured logging (JSON + human modes).
-- [ ] Introduce log redaction for sensitive fields.
-- [ ] Add local diagnostics command (`sentinal doctor`).
-- [ ] Add optional offline metrics sink (local file/SQLite).
-
-### 1.4 Error handling model
-- [ ] Define domain exception hierarchy.
-- [ ] Normalize error codes/messages for CLI/API surfaces.
-- [ ] Add retry/backoff primitives for local I/O contention.
+Hard constraints:
+- Keep offline-first behavior functional.
+- Preserve deterministic behavior where possible.
+- Do not break existing tests.
+- Update README/docs for any user-visible change.
+- Prefer backward-compatible changes.
+```
 
 ---
 
-## 2) Knowledge Ingestion Pipeline
+## 1) Project Mission and Quality Bar
 
-### 2.1 Source adapters
-- [ ] Add filesystem ingestion (txt/md/pdf/docx) with adapter interfaces.
-- [ ] Implement robust PDF extraction fallback chain.
-- [ ] Add incremental directory watcher mode (polling + debounce).
-- [ ] Add source metadata normalization (`source_uri`, checksum, mime, size).
+### Mission
+Deliver a portable, offline-first local AI system that can:
+- ingest local knowledge files,
+- chunk and index content,
+- retrieve relevant passages,
+- answer questions with traceable sources.
 
-### 2.2 Parsing + cleaning
-- [ ] Add language detection and text normalization.
-- [ ] Remove boilerplate/headers/footers with heuristics.
-- [ ] Preserve structural hints (headings, bullet lists, tables-as-text).
-- [ ] Add deduplication by document checksum and near-duplicate chunk similarity.
-
-### 2.3 Chunking improvements
-- [ ] Add token-aware chunking strategy (vs words only).
-- [ ] Add strategy selection (`sentence`, `semantic`, `fixed-token`).
-- [ ] Add deterministic chunk IDs and provenance mapping.
-- [ ] Add benchmark suite for chunk quality and speed.
+### Quality bar (non-negotiable)
+- **Offline baseline works without internet.**
+- **Deterministic baseline path is testable.**
+- **Security/privacy defaults are safe.**
+- **Every behavior change includes tests.**
+- **Changes are incremental and reviewable.**
 
 ---
 
-## 3) Embeddings & Retrieval
+## 2) Current Repo Map (for Claude orientation)
 
-### 3.1 Embedding providers
-- [ ] Keep `HashEmbedder` as fallback baseline.
-- [ ] Add local model embedding provider interface (GGUF/ONNX backends).
-- [ ] Add pluggable model registry and selection policy.
-- [ ] Cache embeddings by content hash and model/version.
+Primary modules:
+- `src/sentinal/config.py` — runtime configuration
+- `src/sentinal/chunking.py` — chunking strategies
+- `src/sentinal/embeddings.py` — embedding logic/fallbacks
+- `src/sentinal/index.py` — indexing/retrieval primitives
+- `src/sentinal/qa.py` — QA orchestration
+- `src/sentinal/knowledge_base.py` — ingestion/search composition
+- `src/flash_ai/engine.py`, `src/flash_ai/service.py` — service/engine layer
 
-### 3.2 Indexing
-- [ ] Add persistent vector store abstraction (SQLite + ANN backend option).
-- [ ] Support index rebuild, compaction, and corruption detection.
-- [ ] Add hybrid retrieval (BM25 + vector fusion).
-- [ ] Add metadata filters (date, tag, source, classification).
-
-### 3.3 Retrieval quality
-- [ ] Add reranker abstraction (local cross-encoder optional).
-- [ ] Add MMR diversity and anti-duplication controls.
-- [ ] Add query expansion + rewrite hooks.
-- [ ] Build retrieval evaluation harness (precision@k, recall@k, MRR).
+Tests currently live in:
+- `tests/test_sentinal_core.py`
+- `tests/test_engine.py`
 
 ---
 
-## 4) QA / Reasoning Layer
+## 3) Global Definition of Done (DoD)
 
-### 4.1 Answer synthesis
-- [ ] Replace snippet concatenation with template-driven synthesis.
-- [ ] Enforce explicit citation mapping per claim.
-- [ ] Add confidence scoring and uncertainty messaging.
-- [ ] Add answer length and style controls.
-
-### 4.2 Guardrails
-- [ ] Add prompt-injection detection for retrieved content.
-- [ ] Add policy filters for unsafe output categories.
-- [ ] Add citation-required mode (deny unsupported claims).
-- [ ] Add hallucination heuristics (claim-vs-source checks).
-
-### 4.3 Conversation/session support
-- [ ] Add local session memory with TTL.
-- [ ] Add topic-scoped context windows.
-- [ ] Add conversation export/import for field use.
+A task is complete only if all items pass:
+- [ ] Code builds/runs locally.
+- [ ] New/changed logic has unit tests.
+- [ ] Impacted flow has integration coverage (or documented gap).
+- [ ] Existing tests still pass.
+- [ ] README/docs updated for user-facing changes.
+- [ ] Error messages are actionable.
+- [ ] Logging does not leak sensitive values.
 
 ---
 
-## 5) Security & Privacy
+## 4) Implementation Rules for Claude
 
-### 5.1 Data protection
-- [ ] Encrypt at rest for `.sentinal` state.
-- [ ] Add key management mode (passphrase + OS keyring fallback).
-- [ ] Implement secure delete option for sensitive datasets.
-- [ ] Add signed backup/restore flow.
-
-### 5.2 Access control
-- [ ] Add local RBAC roles for multi-user hosts.
-- [ ] Add audit log for ingestion/query/admin actions.
-- [ ] Add API auth tokens with rotation policies.
-
-### 5.3 Supply chain
-- [ ] Add SBOM generation in releases.
-- [ ] Add dependency/license policy checks.
-- [ ] Add reproducible build verification artifacts.
+1. **Work in one focused PR-sized unit at a time.**
+2. **Do not perform broad refactors without explicit request.**
+3. **Preserve public APIs unless migration notes are added.**
+4. **Use typed function signatures and concise docstrings.**
+5. **Add feature flags/toggles for risky behavior changes.**
+6. **Prefer pure functions for deterministic logic.**
+7. **If a dependency is added, justify why stdlib/current deps are insufficient.**
 
 ---
 
-## 6) Interfaces (CLI + API + Optional UI)
+## 5) Priority Roadmap (Execution Order)
 
-### 6.1 CLI (priority)
-- [ ] Add commands: `init`, `ingest`, `search`, `ask`, `stats`, `doctor`.
-- [ ] Add machine-readable output mode (`--json`).
-- [ ] Add shell completion and command help examples.
+## Phase A — Foundation Hardening
 
-### 6.2 Local API
-- [ ] Define REST/HTTP API contract for ingestion/search/ask.
-- [ ] Add OpenAPI schema generation.
-- [ ] Add rate limiting and request size controls.
+### A1. Config system
+- [ ] Add schema-style validation (types + ranges + required fields).
+- [ ] Add env-var override support.
+- [ ] Add profile support: `dev`, `prod`, `airgap`, `edge_lowmem`.
+- [ ] Add persisted config path: `.sentinal/config.toml`.
 
-### 6.3 Optional UI
-- [ ] Build minimal local web UI for ingest/search/ask.
-- [ ] Add source citation drill-down panel.
-- [ ] Add offline status + model/index health indicators.
+**Acceptance checks**
+- Invalid config returns deterministic, human-readable errors.
+- Profile resolution order is documented and tested.
 
----
+### A2. Logging + diagnostics
+- [ ] Add human + JSON logging modes.
+- [ ] Redact secrets/tokens/credentials in logs.
+- [ ] Add `doctor` diagnostics path/command.
 
-## 7) Persistence & Operations
+**Acceptance checks**
+- Log lines include operation context and duration where relevant.
+- Redaction behavior is unit tested.
 
-### 7.1 State management
-- [ ] Add repository metadata DB (SQLite) for docs/chunks/index versions.
-- [ ] Add schema migration framework.
-- [ ] Add transactional ingestion with rollback on failure.
+### A3. Error model
+- [ ] Introduce domain exceptions (`ConfigError`, `IngestionError`, `IndexError`, `QAError`).
+- [ ] Normalize service/CLI-facing error responses.
+- [ ] Add retry/backoff utility for transient file I/O conflicts.
 
-### 7.2 Backup & portability
-- [ ] Implement portable export bundle (state + docs + manifest).
-- [ ] Implement integrity verification for imports.
-- [ ] Add differential backup mode for large corpora.
-
-### 7.3 Performance
-- [ ] Add ingestion throughput benchmarks.
-- [ ] Add query latency budgets and profiling hooks.
-- [ ] Add memory ceilings and adaptive batching.
+**Acceptance checks**
+- Common failures map to stable exception categories.
 
 ---
 
-## 8) Testing & Quality
+## Phase B — Ingestion Reliability
 
-### 8.1 Test strategy
-- [ ] Expand unit tests across all modules and edge cases.
-- [ ] Add integration tests for end-to-end ingest/search/ask.
-- [ ] Add golden tests for deterministic offline baseline.
-- [ ] Add property tests for chunking/index correctness.
+### B1. Adapter architecture
+- [ ] Create source adapter interface.
+- [ ] Implement adapters for `txt`, `md`, `pdf`, `docx`.
+- [ ] Normalize metadata: `source_uri`, checksum, mime, size, modified time.
 
-### 8.2 Reliability
-- [ ] Add fuzzing for parsers and ingestion adapters.
-- [ ] Add fault-injection tests (disk full, corrupt index, interrupted writes).
-- [ ] Add chaos-style long-run tests for memory leaks/regressions.
+### B2. Parse/clean pipeline
+- [ ] Unicode + whitespace normalization.
+- [ ] Optional boilerplate/header/footer removal.
+- [ ] Preserve useful structure hints (titles/lists/table text).
+- [ ] Deduplicate by checksum and near-duplicate similarity threshold.
 
-### 8.3 Code quality gates
-- [ ] Add linting/format/type gates in CI.
-- [ ] Add coverage threshold + diff coverage checks.
-- [ ] Add conventional commit / PR template checks.
-
----
-
-## 9) Documentation & Developer Experience
-
-### 9.1 Docs
-- [ ] Add architecture decision records (ADRs).
-- [ ] Add threat model and security hardening guide.
-- [ ] Add offline deployment playbook and troubleshooting guide.
-
-### 9.2 Onboarding
-- [ ] Add `examples/` for common workflows.
-- [ ] Add `make`/task runner targets for common dev actions.
-- [ ] Add contributor guide with coding/testing standards.
+### B3. Chunking improvements
+- [ ] Add token-aware chunking mode.
+- [ ] Support `sentence`, `fixed-token`, and semantic-leaning strategies.
+- [ ] Deterministic chunk IDs.
+- [ ] Provenance offsets for citation mapping.
 
 ---
 
-## 10) Milestones
+## Phase C — Embeddings, Indexing, Retrieval
 
-### Milestone A — Core Offline MVP
-- [ ] CLI for ingest/search/ask.
-- [ ] Persistent local index + metadata DB.
-- [ ] Deterministic baseline tests + integration tests.
-- [ ] Basic security controls (encryption at rest + audit log).
+### C1. Embeddings
+- [ ] Keep `HashEmbedder` as guaranteed fallback.
+- [ ] Add pluggable local embedder interface.
+- [ ] Cache embeddings by `(content_hash, model_id, model_version)`.
 
-### Milestone B — Quality & Safety
-- [ ] Retrieval evaluation harness and reranking.
-- [ ] Guardrails and citation-required QA mode.
-- [ ] Backup/export + migration stability.
+### C2. Persistent index
+- [ ] Add persistence abstraction (initial SQLite-backed implementation acceptable).
+- [ ] Add index rebuild + compaction flow.
+- [ ] Add integrity/corruption checks.
 
-### Milestone C — Field-Ready Operations
-- [ ] Performance tuning for constrained devices.
-- [ ] Air-gapped installation + update process.
-- [ ] Full operational playbook and diagnostics tooling.
+### C3. Retrieval quality
+- [ ] Hybrid retrieval option (lexical + vector).
+- [ ] Metadata filters.
+- [ ] Optional reranker abstraction.
+- [ ] MMR/diversity controls.
+- [ ] Evaluation harness: precision@k, recall@k, MRR.
 
 ---
 
-## 11) Immediate Next Sprint (Recommended)
+## Phase D — QA Grounding and Safety
 
-- [ ] Implement CLI skeleton (`init`, `ingest`, `search`, `ask`).
-- [ ] Add persistent storage layer (SQLite metadata + vector persistence).
-- [ ] Introduce adapter-based ingestion for txt/md/pdf.
-- [ ] Add deterministic end-to-end integration test fixture.
-- [ ] Add structured logging + `sentinal doctor` basic checks.
+### D1. Answer synthesis
+- [ ] Replace naive concatenation with template-driven synthesis.
+- [ ] Require citation mapping for grounded claims where possible.
+- [ ] Add confidence/uncertainty messaging.
+- [ ] Add output style controls (brief/detailed/bullets).
+
+### D2. Safety guardrails
+- [ ] Detect likely prompt injection patterns in retrieved content.
+- [ ] Add strict citation-required mode.
+- [ ] Add unsupported-claim detection heuristics.
+
+---
+
+## Phase E — Interfaces
+
+### E1. CLI (first-class)
+- [ ] Add/complete commands: `init`, `ingest`, `search`, `ask`, `stats`, `doctor`.
+- [ ] Add `--json` machine-readable output.
+- [ ] Add practical help examples.
+
+### E2. Local API (after CLI stability)
+- [ ] Define OpenAPI contract for ingest/search/ask.
+- [ ] Validate payload sizes and request schemas.
+- [ ] Add optional local token auth for multi-user hosts.
+
+---
+
+## Phase F — Security + Operations
+
+- [ ] Encryption at rest for persisted state.
+- [ ] Key management mode (passphrase + keyring fallback).
+- [ ] Export/import bundles with integrity manifest.
+- [ ] Migration framework for persistent schemas.
+- [ ] Backup/restore workflows.
+- [ ] Performance hooks (ingestion throughput + query latency).
+- [ ] SBOM + dependency/license checks for releases.
+
+---
+
+## 6) Mandatory Testing Policy
+
+For every completed task, Claude must run relevant checks and report output.
+
+Minimum expected commands:
+- `pytest -q`
+- Any targeted test selection for changed modules (example: `pytest -q tests/test_sentinal_core.py`)
+
+If a command cannot run, Claude must explicitly explain why and propose a workaround.
+
+---
+
+## 7) Recommended PR Slicing
+
+1. Config validation + profiles + env overrides
+2. Error hierarchy + logging + doctor
+3. Ingestion adapters + metadata normalization
+4. Chunking deterministic IDs + provenance
+5. Persistent index + integrity checks
+6. Hybrid retrieval + filtering + evaluation harness
+7. QA synthesis + citations + guardrails
+8. CLI completion + docs examples
+9. Security + backup/migrations + release hygiene
+
+Each PR summary must include:
+- Scope,
+- Behavior changes,
+- Tests executed,
+- Risks,
+- Follow-up TODO.
+
+---
+
+## 8) Task Execution Template (Claude must follow)
+
+```text
+Task: <single task from TODO>
+
+Plan:
+- <step 1>
+- <step 2>
+
+Changes:
+- <file>: <what changed>
+
+Tests:
+- <command>
+- <result>
+
+Validation:
+- <what behavior is now guaranteed>
+
+Risks/Notes:
+- <edge cases or deferred items>
+
+Next recommended task:
+- <single next item>
+```
+
+---
+
+## 9) Immediate Next Sprint (first 5 tasks)
+
+- [ ] Implement CLI skeleton: `init`, `ingest`, `search`, `ask`.
+- [ ] Add SQLite metadata persistence for docs/chunks/index versions.
+- [ ] Implement adapter-based ingestion for `txt`/`md`/`pdf` first.
+- [ ] Add deterministic ingest→retrieve→ask integration fixture.
+- [ ] Implement `doctor` with environment/index sanity checks.
+
+Sprint exit criteria:
+- [ ] `pytest -q` passes.
+- [ ] README includes runnable usage examples.
+- [ ] Migration/storage notes are documented.
+
+---
+
+## 10) Anti-Patterns to Avoid
+
+- Giant one-shot rewrites.
+- Adding network-dependent core behavior.
+- Silent failures or swallowed exceptions.
+- Unbounded memory growth in ingestion/indexing paths.
+- Shipping new behavior without tests.
+- Introducing breaking API changes without migration guidance.
