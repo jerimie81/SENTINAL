@@ -1,0 +1,980 @@
+
+Portable AI System
+
+
+Technical Design & Production Manual
+
+
+Offline-First LLM Deployment on USB/SD for Android 15 (SDK 35+) and Linux
+
+
+
+
+---
+
+
+1. Purpose & Scope
+
+
+This manual defines:
+
+
+System architecture constraints
+
+
+Repository structure
+
+
+Cross-platform build pipelines (Android + Linux)
+
+
+Native compilation standards (NDK + 16KB pages)
+
+
+Storage Access Framework (SAF) compliance lifecycle
+
+
+Secure DB pack build process
+
+
+Encryption integration
+
+
+Atomic update mechanism
+
+
+Performance benchmarking & torture validation
+
+
+CI/CD release pipeline
+
+
+Production hardening
+
+
+
+
+This document is the authoritative implementation blueprint.
+
+
+
+
+---
+
+
+2. Hard Acceptance Gates (Pre-Production Requirements)
+
+
+Production is blocked unless all gates pass.
+
+
+G1 – SAF Durability Gate (Android)
+
+
+Requirement: Persistent read/write access to removable USB/SD across reboot.
+
+
+Implementation Steps
+
+
+1. Use ACTION_OPEN_DOCUMENT_TREE
+
+
+
+
+2. Capture returned Uri
+
+
+
+
+3. Call:
+
+
+contentResolver.takePersistableUriPermission(
+    uri,
+    Intent.FLAG_GRANT_READ_URI_PERMISSION |
+    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+);
+
+
+
+
+4. Store URI string encrypted in:
+
+
+EncryptedSharedPreferences
+
+
+Backed by Android Keystore
+
+
+
+
+
+
+5. On cold start:
+
+
+Rehydrate URI
+
+
+Rebuild tree via DocumentFile.fromTreeUri()
+
+
+
+
+
+
+
+
+Validation
+
+
+Write file
+
+
+Reboot device
+
+
+Modify file
+
+
+Delete file
+
+
+No re-prompt allowed
+
+
+
+
+If force-stopped → permission recovery logic must run in MainActivity.onCreate().
+
+
+
+
+---
+
+
+G2 – Offline Inference Gate
+
+
+Requirement: llama.cpp loads GGUF via mmap and generates tokens offline.
+
+
+Build Requirements
+
+
+NDK compiled with:
+
+
+-O2
+
+
+USE_OPENMP=1
+
+
+16KB page alignment (Android 15+)
+
+
+
+
+No ART heap model loading
+
+
+Must use mmap on file descriptor
+
+
+
+
+Pass Criteria
+
+
+Sustained 10-minute generation
+
+
+No OOM killer
+
+
+No thermal crash
+
+
+Stable token throughput
+
+
+
+
+
+
+---
+
+
+G3 – Atomic Update Gate
+
+
+Requirement: DB Pack swap without corruption under power loss.
+
+
+Required
+
+
+SQLite WAL mode
+
+
+fsync enforcement
+
+
+SHA-256 verification
+
+
+Atomic rename swap
+
+
+
+
+Must survive:
+
+
+USB removal mid-copy
+
+
+Power loss mid-swap
+
+
+
+
+
+
+---
+
+
+3. Repository Architecture
+
+
+portable-ai/
+│
+├── android-app/
+│   ├── app/
+│   ├── cpp/               # llama.cpp + SQLite NDK
+│   ├── CMakeLists.txt
+│   └── build.gradle
+│
+├── linux-runtime/
+│   ├── llama-cli/
+│   └── scripts/
+│
+├── db-pack-builder/
+│   ├── schema/
+│   ├── fts5-index/
+│   └── encryption/
+│
+├── media-layout/
+│   └── PARTITION_LAYOUT.md
+│
+├── benchmark/
+│   └── harness/
+│
+└── CI/
+    └── build-pipeline.yml
+
+
+
+
+---
+
+
+4. Removable Media Layout (exFAT Only)
+
+
+Must be formatted exFAT (no FAT32).
+
+
+AI/
+  models/
+  runtime/linux/
+  config/
+
+
+Databases/
+  domain_packs/
+  user_data/
+
+
+UserSpace/
+  projects/
+  logs/
+  temp/
+
+
+Partition        Encryption        Mutability
+
+
+AI/models        None (E0)        Read-only
+domain_packs        SQLCipher        Atomic swap
+user_data        SQLCipher        R/W
+UserSpace        XChaCha20        R/W
+
+
+
+
+
+
+---
+
+
+5. Android Build Process (Production)
+
+
+5.1 Toolchain
+
+
+Android Studio Flamingo+
+
+
+SDK 35+
+
+
+NDK r26+
+
+
+CMake 3.22+
+
+
+
+
+
+
+---
+
+
+5.2 llama.cpp Build (Android)
+
+
+cmake -B build-android \
+  -DANDROID_ABI=arm64-v8a \
+  -DANDROID_PLATFORM=android-35 \
+  -DUSE_OPENMP=1 \
+  -DCMAKE_BUILD_TYPE=Release
+
+
+cmake --build build-android --config Release
+
+
+Critical Flags
+
+
+-O2
+
+
+-fopenmp
+
+
+-march=armv8.2-a
+
+
+16KB page support via NDK toolchain
+
+
+
+
+
+
+---
+
+
+5.3 SQLite + SQLCipher Build
+
+
+Compile bundled SQLite:
+
+
+-DSQLITE_ENABLE_FTS5
+-DSQLITE_HAS_CODEC
+-DSQLITE_THREADSAFE=1
+
+
+Link SQLCipher.
+
+
+Strip symbols:
+
+
+strip --strip-unneeded libsqlite.so
+
+
+
+
+---
+
+
+5.4 JNI ABI Interface
+
+
+load_model()
+
+
+int load_model(int fd, int context, int gpu_layers);
+
+
+Android flow:
+
+
+ParcelFileDescriptor pfd = resolver.openFileDescriptor(uri, "r");
+int fd = pfd.detachFd();
+
+
+Never pass file paths.
+
+
+
+
+---
+
+
+6. Linux Runtime Build
+
+
+make LLAMA_OPENBLAS=1 USE_OPENMP=1
+
+
+Statically link binaries into:
+
+
+AI/runtime/linux/
+
+
+
+
+---
+
+
+7. DB Pack Build Pipeline
+
+
+Performed on secure build server.
+
+
+Step 1 – Build Raw SQLite DB
+
+
+CREATE VIRTUAL TABLE docs USING fts5(content, tokenize='trigram');
+
+
+Step 2 – Populate
+
+
+Bulk import.
+
+
+Step 3 – Optimize
+
+
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA temp_store=MEMORY;
+
+
+Step 4 – Encrypt
+
+
+Using SQLCipher:
+
+
+PRAGMA key = 'derived_key';
+
+
+Step 5 – Generate SHA-256
+
+
+sha256sum db_pack.sqlite > db_pack.sha256
+
+
+
+
+---
+
+
+8. Encryption Integration
+
+
+AI Partition – No Encryption
+
+
+Required for mmap.
+
+
+DB + UserSpace – E1
+
+
+SQLCipher tuning:
+
+
+PRAGMA cipher_memory_security = OFF;
+PRAGMA kdf_iter = 64000;
+
+
+Tune kdf_iter based on CPU tests.
+
+
+File Encryption
+
+
+Use:
+
+
+XChaCha20
+
+
+Argon2id KDF
+
+
+
+
+
+
+---
+
+
+9. Update Mechanism
+
+
+Safe Update Flow
+
+
+1. Download DB pack → UserSpace/temp/
+
+
+
+
+2. Verify SHA-256
+
+
+
+
+3. fsync
+
+
+
+
+4. Atomic rename:
+
+
+mv new.db active.db
+
+
+
+
+5. Reopen connection pool
+
+
+
+
+
+
+No row-level migrations allowed.
+
+
+
+
+---
+
+
+10. Benchmark Harness
+
+
+Models
+
+
+3B Q4
+
+
+7–8B Q4_K_M
+
+
+
+
+Metrics
+
+
+Prompt tok/s
+
+
+Generation tok/s
+
+
+Peak RSS
+
+
+Cold start latency
+
+
+Thermal degradation curve (10 min)
+
+
+
+
+Log to:
+
+
+UserSpace/logs/benchmark.csv
+
+
+
+
+---
+
+
+11. SAF Torture Test App
+
+
+Headless service:
+
+
+Create nested dirs
+
+
+Write random bytes
+
+
+Rename
+
+
+Kill process
+
+
+Reboot
+
+
+Resume write
+
+
+
+
+Mandatory before inference integration.
+
+
+
+
+---
+
+
+12. CI/CD Pipeline
+
+
+Stage 1 – Native Compile
+
+
+Android ARM64
+
+
+Linux x86_64
+
+
+Strip debug symbols
+
+
+
+
+Stage 2 – DB Pack Build
+
+
+Schema validation
+
+
+FTS5 verification
+
+
+Encryption pass
+
+
+SHA generation
+
+
+
+
+Stage 3 – Instrumented Test
+
+
+Emulator API 35
+
+
+SAF integration test
+
+
+
+
+Stage 4 – Benchmark Smoke Test
+
+
+60 sec generation
+
+
+
+
+Stage 5 – Artifact Signing
+
+
+Android APK signed
+
+
+DB pack signed
+
+
+Checksums published
+
+
+
+
+
+
+---
+
+
+13. Production Release Checklist
+
+
+Android
+
+
+targetSdk = 35
+
+
+16KB page test device validation
+
+
+No background service > 6h violation
+
+
+
+
+Linux
+
+
+glibc compatibility check
+
+
+OpenBLAS linked
+
+
+Thread pinning validated
+
+
+
+
+Media
+
+
+exFAT only
+
+
+64KB cluster size recommended
+
+
+
+
+
+
+---
+
+
+14. Deployment Model
+
+
+1. Format USB exFAT
+
+
+
+
+2. Copy directory layout
+
+
+
+
+3. Install APK
+
+
+
+
+4. Launch → select root directory
+
+
+
+
+5. Persist URI
+
+
+
+
+6. Load model
+
+
+
+
+7. Validate inference
+
+
+
+
+8. Run benchmark
+
+
+
+
+9. Lock production image
+
+
+
+
+
+
+
+
+---
+
+
+15. Operational Monitoring
+
+
+Log thermal slope
+
+
+Log memory peak
+
+
+Monitor WAL growth
+
+
+Track DB pack version
+
+
+
+
+
+
+---
+
+
+16. Failure Recovery Strategy
+
+
+Failure        Mitigation
+
+
+OOM        Reduce context size
+Thermal throttle        Lower threads
+SAF permission loss        Rehydrate URI
+DB corruption        Restore from signed pack
+SQLCipher timeout        Reduce kdf_iter
+
+
+
+
+
+
+---
+
+
+17. Versioning Strategy
+
+
+APK version
+
+
+Runtime ABI version
+
+
+DB Pack version
+
+
+Encryption profile version
+
+
+Model compatibility tag
+
+
+
+
+
+
+---
+
+
+18. Production Risk Summary
+
+
+Risk        Severity        Mitigation
+
+
+JNI memory leaks        High        Strict RAII
+16KB misalignment        Critical        NDK enforcement
+SQLCipher latency        Medium        Connection pooling
+SAF IPC overhead        High        Descriptor bypass
+Thermal collapse        Medium        Thread pinning
+
+
+
+
+
+
+---
+
+
+19. Final Production Architecture
+
+
+Primary Environment: Android Native App
+Inference Engine: llama.cpp (exclusive)
+Encryption: E1 (DB + UserSpace only)
+Database Strategy: Bundled NDK SQLite FTS5 DB Packs
+Primary Use Case: Cybersecurity workflows
+
+
+
+
+---
+
+
+20. Production Readiness Definition
+
+
+System is production-ready when:
+
+
+All 3 gates pass
+
+
+10-minute sustained inference stable
+
+
+Atomic DB swap verified
+
+
+SAF torture test passes
+
+
+No OEM-specific crash on arm64
+
+
+Benchmarks within 10% variance across 3 devices
+
+
+
+
+
+
+---
+Next Steps:
+
+
+Convert this into a formal PDF engineering handbook
+
+
+Generate a CI pipeline YAML
+
+
+Create a task-tracked implementation roadmap
+
+
+Produce a threat model document
+
+
+Or expand this into a v2 enterprise-grade TDM (with formal schemas and state machines)

@@ -1,22 +1,17 @@
-# SENTINAL – Portable Offline AI System
+# Flash-AI (Initial Scaffold)
 
-This repository now contains the **initial production-ready core** for SENTINAL's highest-priority offline components:
+This repository now contains an initial, runnable Python scaffold for Flash-AI:
 
-- Offline knowledge ingestion (document + chunking)
-- Deterministic local embeddings for bootstrap environments
-- Local vector index with similarity search
-- Retrieval-QA service over local knowledge
-- Path/config primitives for portable deployments
+- `flash_ai.engine`: deterministic flashcard generation logic
+- `flash_ai.service`: application service layer with in-memory deck storage
+- `flash_ai.models`: core domain models
+- `tests/`: starter tests for generation and service behavior
 
-## Implemented modules
+## Why this scaffold
 
-- `sentinal.config` – deployment paths + retrieval settings
-- `sentinal.models` – `Document`, `Chunk`, `SearchResult`
-- `sentinal.chunking` – chunking with overlap and validation
-- `sentinal.embeddings` – deterministic offline `HashEmbedder`
-- `sentinal.index` – in-memory vector index + top-k search
-- `sentinal.knowledge_base` – document ingestion and retrieval API
-- `sentinal.qa` – retrieval-backed answer service
+The file `Flash-AI_Technical-Design-Manual-(TDM).PDF` currently has zero bytes in this repository,
+so this scaffold establishes a clean foundation that can be aligned to the full TDM once the
+manual content is available.
 
 ## Run tests
 
